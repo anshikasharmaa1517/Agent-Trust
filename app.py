@@ -70,8 +70,12 @@ html, body, .stApp {
     line-height: 1.5;
 }
 
-#MainMenu, footer, header, .stDeployButton { display: none !important; }
-.block-container { padding: 0 !important; max-width: 100% !important; }
+#MainMenu, footer, .stDeployButton, [data-testid="stAppDeployButton"] { display: none !important; }
+[data-testid="stToolbar"] { right: 24px !important; top: 16px !important; z-index: 9999999 !important; }
+header { background: transparent !important; box-shadow: none !important; }
+.block-container { padding: 6rem 2rem 2rem 2rem !important; max-width: 100% !important; }
+div[data-testid="stMainBlockContainer"] { padding: 6rem 2rem 2rem 2rem !important; max-width: 100% !important; }
+div[data-testid="stAppViewBlockContainer"] { padding: 6rem 2rem 2rem 2rem !important; max-width: 100% !important; }
 
 /* ── Global Top Bar ── */
 .rz-topnav {
@@ -81,8 +85,10 @@ html, body, .stApp {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 999;
 }
 .rz-topnav-left {
@@ -161,6 +167,7 @@ html, body, .stApp {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin: 0 -2rem;
 }
 .rz-page-title { font-size: 20px; font-weight: 600; color: var(--rz-text); margin: 0; }
 .rz-page-subtitle { font-size: 13px; color: var(--rz-text-secondary); margin-top: 2px; }
@@ -370,41 +377,100 @@ html, body, .stApp {
 
 /* ── Sidebar ── */
 section[data-testid="stSidebar"] {
-    display: flex !important;
-    width: 200px !important;
-    min-width: 200px !important;
-    max-width: 200px !important;
     background: var(--rz-white) !important;
     border-right: 1px solid var(--rz-border) !important;
 }
-section[data-testid="stSidebar"] > div:first-child {
-    width: 200px !important;
-    padding: 0 !important;
-    background: var(--rz-white) !important;
+
+/* Make the collapse button visible inside the open sidebar */
+[data-testid="stSidebarCollapseButton"] {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+    border-radius: 4px !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999999 !important;
+    color: #000000 !important;
+    visibility: visible !important;
+    cursor: pointer !important;
 }
-section[data-testid="stSidebar"] .stButton > button {
-    background: transparent !important;
-    color: #374151 !important;
-    border: none !important;
-    border-radius: 0 4px 4px 0 !important;
-    text-align: left !important;
-    font-size: 13px !important;
-    font-weight: 400 !important;
-    padding: 7px 16px 7px 20px !important;
-    margin: 1px 8px 1px 0 !important;
-    width: calc(100% - 8px) !important;
-    border-left: 3px solid transparent !important;
-    transition: background 0.1s, color 0.1s;
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapseButton"] span[data-testid="stIconMaterial"] {
+    display: block !important;
+    color: #000000 !important;
+    fill: #000000 !important;
+    stroke: #000000 !important;
 }
-section[data-testid="stSidebar"] .stButton > button:hover {
-    background: #f3f4f6 !important;
+
+/* 
+ * Ultra-bulletproof target for the Streamlit sidebar toggle (when closed).
+ * We target the specific button that contains a Material Icon anywhere in the header
+ * (except the ones we explicitly hid).
+ */
+header[data-testid="stHeader"] button:has(span[data-testid="stIconMaterial"]) {
+    position: fixed !important;
+    left: 12px !important;
+    top: 16px !important;
+    z-index: 9999999 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+header[data-testid="stHeader"] button:has(span[data-testid="stIconMaterial"]):hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Force all Material icons and SVGs in the Streamlit header to be pure white */
+header[data-testid="stHeader"] span[data-testid="stIconMaterial"],
+header[data-testid="stHeader"] svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* Target the radio group specifically used for navigation */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] > div {
+    gap: 0 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label {
+    padding: 10px 20px !important;
+    margin: 0 !important;
+    border-left: 4px solid transparent !important;
+    width: 100% !important;
+    cursor: pointer !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
+    background: #f9fafb !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label:has(input:checked) {
+    background: #f4f5f7 !important;
+    border-left: 4px solid var(--rz-blue) !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label:has(input:checked) p {
+    font-weight: 600 !important;
     color: #1a1a1a !important;
 }
-section[data-testid="stSidebar"] .stButton > button:focus {
-    background: #e8f0fe !important;
-    color: #1a73e8 !important;
-    border-left: 3px solid #1a73e8 !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label p {
+    color: #374151 !important;
+    font-size: 14px !important;
     font-weight: 500 !important;
+    margin: 0 !important;
+}
+/* Hide the radio circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > div:not(:has(p)) {
+    display: none !important;
 }
 
 /* ── Test Mode Banner ── */
@@ -568,30 +634,14 @@ rz_status = razorpay_adapter.get_connection_status()
 rz_connected = rz_status['mode'] == 'TEST'
 
 st.markdown(f"""
-<div class="rz-topnav">
-  <div class="rz-topnav-left">
-    <div class="rz-logo">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M22 5L12 2 2 5v6.09c0 5.05 4.25 9.76 10 10.91 5.75-1.15 10-5.86 10-10.91V5z" fill="#0066FF" opacity="0.9"/><path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="rz-logo-text">Razorpay</span>
-    </div>
-    <span class="rz-topnav-link">Razorpay Home</span>
-    <span class="rz-topnav-link active">Payments</span>
-    <span class="rz-topnav-link" style="font-size:13px">✕ Banking+</span>
-    <span class="rz-topnav-link">More ▾</span>
+<div class="rz-topnav" style="height: 72px; padding: 0 24px 0 76px; background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%); display: flex; align-items: center; justify-content: flex-start; gap: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+  <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
   </div>
-  <div class="rz-topnav-right">
-    <input class="rz-topnav-search" placeholder="Search payment products, settings, and more" disabled />
-    <span class="rz-topnav-icon" style="font-size:14px">⚡</span>
-    <span class="rz-topnav-icon" style="font-size:14px">🔔</span>
-    <span class="rz-topnav-icon" style="font-size:14px">📋</span>
-    <span class="rz-topnav-icon" style="font-size:14px">⊞</span>
-    <div class="rz-topnav-avatar">A</div>
+  <div style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+    <div style="color: white; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">Agent Trust</div>
+    <div style="color: #94a3b8; font-size: 13px; font-weight: 400;">Control what your AI agents are authorized to do.</div>
   </div>
-</div>
-
-<div class="rz-test-banner">
-  <div>You are in <strong>Test Mode</strong>, so only test data is shown. <span style="color:#2563eb;text-decoration:underline;cursor:pointer">Activate your account</span> to start making live transactions.</div>
-  <span class="rz-test-badge">● TEST</span>
 </div>
 
 <div class="rz-help-btn">
@@ -615,43 +665,39 @@ NAV_AGENT_TRUST = [
 def render_sidebar():
     stats = db.get_stats()
     with st.sidebar:
-        # Top items (like real Razorpay: Home, Transactions, Settlements, Reports)
+        # Top section header
         st.markdown("""
-        <div style="padding:12px 0 6px">
-          <div style="padding:6px 20px;font-size:13px;color:#374151;cursor:default">⌂ Home</div>
-          <div style="padding:6px 20px;font-size:13px;color:#374151;cursor:default">↔ Transactions</div>
-          <div style="padding:6px 20px;font-size:13px;color:#374151;cursor:default">✓ Settlements</div>
-          <div style="padding:6px 20px;font-size:13px;color:#374151;cursor:default">☰ Reports</div>
-        </div>
-        <div style="padding:10px 20px 4px;font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px">
-          Agent Trust
+        <div style="padding:16px 24px 8px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px">
+          AGENT TRUST
         </div>
         """, unsafe_allow_html=True)
 
         current = st.session_state.page
-        for key, label in NAV_AGENT_TRUST:
-            is_active = (current == key) or (current == "txn_detail" and key == "transactions")
-            icon = {"overview": "◈", "agents": "●", "intents": "◉", "transactions": "◆", "review": "⚑", "audit": "◎"}.get(key, "●")
-            display_label = f"{icon}  {label}"
-            if st.button(display_label, key=f"nav_{key}", use_container_width=True):
-                st.session_state.page = key
+        if current == "txn_detail": current = "transactions"
+        
+        options = []
+        key_map = {}
+        current_idx = 0
+        
+        for i, (key, label) in enumerate(NAV_AGENT_TRUST):
+            options.append(label)
+            key_map[label] = key
+            if current == key:
+                current_idx = i
+
+        selected = st.radio("Navigation", options=options, index=current_idx, label_visibility="collapsed")
+        new_page = key_map[selected]
+        
+        if new_page != st.session_state.page:
+            # Only rerun if it's an actual change in the logical page
+            if not (st.session_state.page == "txn_detail" and new_page == "transactions"):
+                st.session_state.page = new_page
+                st.rerun()
+            else:
+                st.session_state.page = new_page
                 st.rerun()
 
-        # Bottom section — Test Mode toggle + Account
-        toggle_bg = '#34d399' if rz_connected else '#d1d5db'
-        toggle_dot_left = '18px' if rz_connected else '2px'
-        st.markdown(f"""
-        <div style="border-top:1px solid #e5e7eb;margin:12px 16px 0"></div>
-        <div style="padding:10px 20px;display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:13px;color:#374151">⚙ Test Mode</span>
-          <div style="width:36px;height:20px;border-radius:10px;background:{toggle_bg};position:relative;cursor:default">
-            <div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:{toggle_dot_left};box-shadow:0 1px 2px rgba(0,0,0,0.2);transition:left 0.2s"></div>
-          </div>
-        </div>
-        <div style="padding:6px 20px 16px;font-size:13px;color:#374151;cursor:default">
-          ⚙ Account & Settings
-        </div>
-        """, unsafe_allow_html=True)
+
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -662,15 +708,7 @@ def page_overview():
     txns = db.list_transactions()
     agents = db.list_agents()
 
-    # Page header
-    st.markdown("""
-    <div class="rz-page-header">
-      <div>
-        <div class="rz-page-title">Agent Trust</div>
-        <div class="rz-page-subtitle">Control what your AI agents are authorized to do.</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Page header removed since it's now in the top black banner
 
     st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 

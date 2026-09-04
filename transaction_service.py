@@ -74,6 +74,14 @@ def execute_transaction(transaction_id: str) -> dict:
     intent = db.get_intent(txn["intent_id"])
     description = txn.get("description") or (intent.get("raw_text", "") if intent else "")
 
+    # Generate Cryptographic Mandate Token (Agentic Token)
+    # Proves to Razorpay that this transaction cleared the deterministic policy engine
+    decision_hash = evidence_service._hash({
+        "transaction_id": transaction_id,
+        "policy_decision": decision
+    })
+    agentic_token = evidence_service.generate_agentic_token(decision_hash, txn["agent_id"])
+
     rz_result = razorpay_adapter.create_order(
         amount=txn["amount"],
         currency=txn.get("currency", "INR"),
@@ -83,6 +91,7 @@ def execute_transaction(transaction_id: str) -> dict:
             "transaction_id": transaction_id,
             "agent_id": txn["agent_id"],
             "intent_id": txn["intent_id"],
+            "agentic_token": agentic_token,  # <--- AP2 / Mastercard style token
         },
     )
 
