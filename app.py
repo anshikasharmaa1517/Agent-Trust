@@ -685,7 +685,7 @@ def render_sidebar():
             if current == key:
                 current_idx = i
 
-        selected = st.radio("Navigation", options=options, index=current_idx, label_visibility="collapsed")
+        selected = st.radio("", options=options, index=current_idx, label_visibility="collapsed")
         new_page = key_map[selected]
         
         if new_page != st.session_state.page:
