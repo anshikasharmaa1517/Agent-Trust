@@ -1,0 +1,6 @@
+streamlit>=1.28.0
+python-dotenv>=1.0.0
+anthropic>=0.34.0
+pytest>=7.4.0
+razorpay>=1.4.0
+requests>=2.31.0
