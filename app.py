@@ -690,9 +690,8 @@ def render_sidebar():
         
         if new_page != st.session_state.page:
             # Only rerun if it's an actual change in the logical page
-            if not (st.session_state.page == "txn_detail" and new_page == "transactions"):
-                st.session_state.page = new_page
-                st.rerun()
+            if st.session_state.page == "txn_detail" and new_page == "transactions":
+                pass
             else:
                 st.session_state.page = new_page
                 st.rerun()
