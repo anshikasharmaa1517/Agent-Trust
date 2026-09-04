@@ -744,7 +744,7 @@ def page_overview():
         intent_text = (intent["raw_text"][:60] + "…") if intent and len(intent["raw_text"]) > 60 else (intent["raw_text"] if intent else "—")
         rows += f"""
         <tr>
-          <td class="mono nowrap">{_sid(t['transaction_id'])}</td>
+          <td class="mono nowrap"><a href="/?txn={t['transaction_id']}" target="_self" style="color:var(--rz-blue);text-decoration:none;">{_sid(t['transaction_id'])}</a></td>
           <td class="nowrap">{agent_name}</td>
           <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5f6368">{intent_text}</td>
           <td class="amt">{_amt(t['amount'])}</td>
@@ -1670,6 +1670,12 @@ def page_settings():
 # ─────────────────────────────────────────────────────────────────
 # App Shell — Render
 # ─────────────────────────────────────────────────────────────────
+# Handle query parameters for deep linking
+if "txn" in st.query_params:
+    st.session_state.page = "txn_detail"
+    st.session_state.detail_txn_id = st.query_params["txn"]
+    st.query_params.clear()
+
 render_sidebar()
 
 page = st.session_state.page
