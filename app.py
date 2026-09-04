@@ -1439,6 +1439,31 @@ def page_txn_detail():
         </div>
         """, unsafe_allow_html=True)
 
+    # Manual Override (if REVIEW)
+    if decision_val == "REVIEW":
+        st.markdown('<div class="rz-section-title" style="margin-top:16px">Manual Override</div>', unsafe_allow_html=True)
+        st.markdown('<div class="rz-card">', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1, 1, 2])
+        with c1:
+            if st.button("✓ Approve & Execute", key=f"appr_{txn_id}", type="primary", use_container_width=True):
+                res = transaction_service.approve_transaction(txn_id)
+                if res.get("error"):
+                    st.error(res["error"])
+                else:
+                    st.success("Transaction Approved and Executed!")
+                st.rerun()
+        with c2:
+            if st.button("✗ Reject & Block", key=f"rej_{txn_id}", use_container_width=True):
+                res = transaction_service.reject_transaction(txn_id)
+                if res.get("error"):
+                    st.error(res["error"])
+                else:
+                    st.success("Transaction Rejected.")
+                st.rerun()
+        with c3:
+            st.markdown('<div style="font-size:12px;color:#6b7280;padding-top:8px">This will override the policy engine and cryptographically sign the new decision.</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
     # View full evidence link
     if evidence:
         if st.button("View Full Evidence →", key="view_evidence"):

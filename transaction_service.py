@@ -216,3 +216,64 @@ def create_full_flow(
         )
 
     return result
+
+
+def approve_transaction(transaction_id: str, reason: str = "Manual approval by admin") -> dict:
+    """Manually approve a transaction in REVIEW state and execute it."""
+    existing_dec = db.get_policy_decision(transaction_id)
+    if not existing_dec or existing_dec["decision"] != Decision.REVIEW.value:
+        return {"error": "Can only approve transactions in REVIEW state."}
+    
+    new_decision = {
+        "decision": Decision.ALLOW.value,
+        "checks": existing_dec.get("checks", {}),
+        "reason_code": "MANUAL_APPROVAL",
+        "reason_detail": reason,
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db.save_policy_decision(transaction_id, new_decision)
+    db.update_transaction_status(transaction_id, "evaluated")
+    
+    return execute_transaction(transaction_id)
+
+
+def reject_transaction(transaction_id: str, reason: str = "Manual rejection by admin") -> dict:
+    """Manually reject a transaction in REVIEW state."""
+    existing_dec = db.get_policy_decision(transaction_id)
+    if not existing_dec or existing_dec["decision"] != Decision.REVIEW.value:
+        return {"error": "Can only reject transactions in REVIEW state."}
+    
+    new_decision = {
+        "decision": Decision.BLOCK.value,
+        "checks": existing_dec.get("checks", {}),
+        "reason_code": "MANUAL_REJECTION",
+        "reason_detail": reason,
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db.save_policy_decision(transaction_id, new_decision)
+    db.update_transaction_status(transaction_id, "blocked")
+    
+    txn = db.get_transaction(transaction_id)
+    intent = db.get_intent(txn["intent_id"]) if txn else None
+    structured_auth = {}
+    if intent:
+        structured_auth = {
+            "purpose": intent.get("purpose"),
+            "category": intent.get("category"),
+            "max_amount": intent.get("max_amount"),
+            "currency": intent.get("currency"),
+            "merchant_requirement": intent.get("merchant_requirement"),
+        }
+        
+    evidence_service.create_evidence(
+        transaction_id=transaction_id,
+        intent_id=txn["intent_id"],
+        agent_id=txn["agent_id"],
+        raw_intent=intent.get("raw_text", "") if intent else "",
+        structured_auth=structured_auth,
+        proposal=txn,
+        decision=new_decision,
+        razorpay_result=None,
+        outcome="NOT_EXECUTED_BLOCK",
+    )
+    return {"executed": False, "status": "blocked", "transaction_id": transaction_id}
