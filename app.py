@@ -177,46 +177,54 @@ div[data-testid="stAppViewBlockContainer"] { padding: 6rem 2rem 2rem 2rem !impor
 .rz-content { padding: 20px 24px 40px; max-width: 100%; }
 
 /* ── KPI row ── */
-.rz-kpi-row { display: flex; gap: 12px; margin-bottom: 20px; }
+.rz-kpi-row { display: flex; gap: 16px; margin-bottom: 24px; }
 .rz-kpi {
     background: var(--rz-white);
     border: 1px solid var(--rz-border);
-    border-radius: 4px;
-    padding: 14px 16px;
+    border-radius: 8px;
+    padding: 16px 20px;
     flex: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
 }
-.rz-kpi-value { font-size: 22px; font-weight: 700; color: var(--rz-text); margin-bottom: 2px; }
-.rz-kpi-label { font-size: 12px; color: var(--rz-text-secondary); font-weight: 500; }
+.rz-kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.rz-kpi-value { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 4px; letter-spacing: -0.5px; }
+.rz-kpi-label { font-size: 13px; color: #64748b; font-weight: 500; }
 
 /* ── Tables ── */
 .rz-table-wrap {
     background: var(--rz-white);
     border: 1px solid var(--rz-border);
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 .rz-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .rz-tbl th {
     text-align: left;
-    padding: 10px 14px;
+    padding: 12px 16px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--rz-text-secondary);
+    color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    background: #f9fafb;
-    border-bottom: 1px solid var(--rz-border);
+    letter-spacing: 0.5px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
 }
 .rz-tbl td {
-    padding: 10px 14px;
-    border-bottom: 1px solid #f3f4f6;
-    color: var(--rz-text);
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
     vertical-align: middle;
 }
 .rz-tbl tr:last-child td { border-bottom: none; }
-.rz-tbl tr:hover td { background: #f9fafb; }
+.rz-tbl tr:hover td { background: #f8fafc; }
 .rz-tbl .mono {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
@@ -243,9 +251,14 @@ div[data-testid="stAppViewBlockContainer"] { padding: 6rem 2rem 2rem 2rem !impor
 .rz-card {
     background: var(--rz-white);
     border: 1px solid var(--rz-border);
-    border-radius: 4px;
-    padding: 16px;
-    margin-bottom: 12px;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s ease;
+}
+.rz-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 .rz-card-header {
     font-size: 12px;
@@ -756,13 +769,13 @@ def page_overview():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown('<div class="rz-section-title">Decision Summary</div>', unsafe_allow_html=True)
+        st.markdown('<div class="rz-section-title" style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> Decision Summary</div>', unsafe_allow_html=True)
         total = max(stats["total_authorizations"], 1)
         allowed_pct = int(stats["transactions_executed"] / total * 100)
         review_pct = int(stats["requires_review"] / total * 100)
         blocked_pct = int(stats["blocked"] / total * 100)
         st.markdown(f"""
-        <div class="rz-card">
+        <div class="rz-card" style="min-height: 160px; display: flex; flex-direction: column; justify-content: center;">
           <div class="rz-bar-wrap">
             <div class="rz-bar-labels"><span style="color:#1e8e3e">Allowed</span><span class="muted">{allowed_pct}%</span></div>
             <div class="rz-bar-track"><div class="rz-bar-fill" style="background:#1e8e3e;width:{allowed_pct}%"></div></div>
@@ -781,7 +794,7 @@ def page_overview():
     with col2:
         # Pending Review summary
         review_txns = [t for t in txns if db.get_policy_decision(t["transaction_id"]) and db.get_policy_decision(t["transaction_id"])["decision"] == "REVIEW"]
-        st.markdown(f'<div class="rz-section-title">Pending Review · {len(review_txns)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rz-section-title" style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Pending Review · {len(review_txns)}</div>', unsafe_allow_html=True)
         
         rows_html = ""
         if review_txns:
@@ -792,7 +805,7 @@ def page_overview():
         else:
             rows_html = '<div style="font-size:12px;color:#9ca3af;padding:4px 0">No pending reviews.</div>'
 
-        st.markdown(f'<div class="rz-card">{rows_html}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rz-card" style="min-height: 160px;">{rows_html}</div>', unsafe_allow_html=True)
         if review_txns:
             if st.button("View all →", key="ov_review_all"):
                 st.session_state.page = "review"
@@ -800,7 +813,7 @@ def page_overview():
 
     with col3:
         # Agent Activity summary (top 3 only)
-        st.markdown(f'<div class="rz-section-title">Agent Activity · {len(agents)}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rz-section-title" style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Agent Activity · {len(agents)}</div>', unsafe_allow_html=True)
         activity_html = ""
         for a in agents[:3]:
             dot_color = "#1e8e3e" if a["status"] == "active" else "#9ca3af"
@@ -808,7 +821,7 @@ def page_overview():
         if len(agents) > 3:
             activity_html += f'<div style="font-size:11px;color:#9ca3af;padding-top:4px">+{len(agents) - 3} more</div>'
             
-        st.markdown(f'<div class="rz-card">{activity_html}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="rz-card" style="min-height: 160px;">{activity_html}</div>', unsafe_allow_html=True)
         if st.button("View all →", key="ov_agents_all"):
             st.session_state.page = "agents"
             st.rerun()
