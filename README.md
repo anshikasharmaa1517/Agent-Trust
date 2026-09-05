@@ -103,5 +103,4 @@ While this iteration serves as a robust proof-of-concept for Agentic Risk Manage
 - **Streaming Policy Evaluation:** Migrating `policy_engine.py` to a stream-processing framework (like Apache Flink) to evaluate temporal velocity policies across millions of events with sub-millisecond latency.
 - **Dynamic Policy Generation:** Utilizing a secondary, highly-constrained LLM (a "Policy Agent") to dynamically update deterministic risk thresholds based on macro-economic data and historical agent performance. 
 
----
-*Built for the Razorpay AI Builder Internship 2026.*
+
