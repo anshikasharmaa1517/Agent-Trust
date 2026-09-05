@@ -1,169 +1,107 @@
-# 🛡️ Payment Change Guardian
+# 🛡️ Agent Trust: Verifiable Risk Management for Agentic Commerce
 
-**Detect breaking changes in payment APIs. Identify affected merchant integrations. Assess risk automatically.**
+**Agent Trust** is a robust middleware security and authorization layer designed for the trillion-dollar future of Agentic Commerce. It provides a deterministic, cryptographically verifiable boundary between autonomous AI agents and financial APIs (such as Razorpay).
 
-Payment Change Guardian is a developer/security tool that compares two versions of a payment API specification (starting with Razorpay), detects breaking changes, scans your merchant integration code for affected references, and generates a comprehensive risk report.
+By shifting the paradigm from *direct API access* to *intent-based authorization*, Agent Trust ensures that non-deterministic AI agents can never execute transactions outside of strict corporate risk policies without explicit human approval.
 
 ---
 
-## Quick Start
+## 📖 The Problem
 
-### 1. Create a virtual environment
+As enterprises deploy AI agents to autonomously negotiate, procure, and execute financial transactions, a critical vulnerability emerges: **Financial APIs were designed for deterministic software, but LLMs are inherently non-deterministic, hallucinatory, and vulnerable to prompt injection.**
+
+Granting an AI agent raw access to a payment gateway API key is a catastrophic liability. A single hallucinated zero or a malicious prompt injection could drain a corporate treasury instantly. 
+
+**Agent Trust** solves the "black box" problem of AI actions by providing:
+1. **Deterministic Risk Boundaries:** Agents propose "Intents" which are evaluated against hardcoded, mathematically verifiable risk policies.
+2. **Human-in-the-Loop Quarantine:** High-risk actions are blocked from the API and routed to a human approver.
+3. **Cryptographic Auditing:** Every decision, whether automated or human-approved, is hashed into an immutable Evidence Record.
+
+---
+
+## 🏗️ Architecture & Core Components
+
+Agent Trust is built with a decoupled, event-driven architecture that intercepts agent behavior before it touches the financial ledger.
+
+### 1. The Intent Engine (`intent_parser.py` & `mock_agent.py`)
+Agents do not make API calls directly. Instead, they generate a signed **Transaction Proposal (Intent)**. 
+- The `mock_agent.py` simulates a LangChain/OpenAI agent attempting to purchase server infrastructure or pay a vendor.
+- The `intent_parser.py` validates the schema of the intent, ensuring it meets the structural requirements for evaluation.
+
+### 2. The Policy Evaluator (`policy_engine.py`)
+A strictly deterministic rules engine that evaluates the parsed Intent against corporate risk policies.
+- **Velocity Checks:** Has this agent exceeded its hourly spend limit?
+- **Category Restrictions:** Is the agent authorized to purchase from this merchant category?
+- **Anomaly Detection:** Is the transaction amount drastically higher than the agent's historical median?
+
+*Decisions are binary: `APPROVE` or `REQUIRES_REVIEW`.*
+
+### 3. The Audit & Evidence Ledger (`crypto_utils.py` & `database.py`)
+Trust requires verification. For every transaction, Agent Trust generates a **Cryptographic Evidence Record**.
+- Computes a SHA-256 hash of the original LLM prompt, the generated intent payload, the policy engine's deterministic evaluation state, and the final decision.
+- This creates an immutable audit trail, providing mathematical proof of *why* an agent made a decision and *who* authorized it, eliminating liability disputes.
+
+### 4. The Control Plane (`app.py`)
+A Streamlit-based dashboard serving as the human-in-the-loop interface.
+- **Overview:** Real-time system metrics and KPIs.
+- **Pending Review:** A quarantine zone for transactions that tripped risk policies, requiring explicit human cryptographic sign-off.
+- **Audit & Evidence:** A transparency dashboard allowing security engineers to inspect the exact state and hashes of historical agent actions.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Environment Setup
+
+Ensure you are running Python 3.10+ and set up your virtual environment.
 
 ```bash
 python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-```
-
-### 2. Install dependencies
-
-```bash
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment (optional)
+### 2. Configuration
+
+Create your local environment file:
 
 ```bash
-copy .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY for AI explanations
+cp .env.example .env
 ```
+Add your `OPENAI_API_KEY` to the `.env` file. This is required for the `mock_agent.py` to simulate live, non-deterministic agent behavior.
 
-> **Note:** The app works fully without an API key. Claude AI explanations are an optional enhancement.
+### 3. Initialize Database & Run
 
-### 4. Run the application
+The application uses a lightweight local SQLite database (`agent_trust.db`) to store policies, intents, and cryptographic evidence.
 
 ```bash
+# Start the Streamlit Control Plane
 streamlit run app.py
 ```
 
-The app opens at `http://localhost:8501`.
-
-### 5. Run tests
-
-```bash
-pytest tests/ -v
-```
-
-### 6. Use the demo
-
-Click **"🚀 Load Demo Fixtures"** in the sidebar, then click **"🔍 Analyze Breaking Changes"**.
-
-Or manually upload the files from `fixtures/`:
-- `fixtures/old_api.json` — Razorpay API v1.0.0
-- `fixtures/new_api.json` — Razorpay API v2.0.0 (with breaking changes)
-- `fixtures/merchant_project/` — Sample merchant integration code
+Navigate to `http://localhost:8502` to view the dashboard. 
+*Note: If port 8501 is occupied, Streamlit will automatically increment to the next available port.*
 
 ---
 
-## What It Does
+## 🧪 Simulating Agent Behavior
 
-### Deterministic Analysis (always runs)
+Agent Trust includes a built-in simulation environment directly within the Control Plane. 
 
-1. **API Diff Engine** — Compares two OpenAPI-style JSON specs and detects:
-   - Removed endpoints
-   - Added required request fields
-   - Removed request/response fields
-   - Changed field types
-   - Removed enum values
-   - Webhook payload changes
-   - Authentication requirement changes
-
-2. **Code Scanner** — Scans merchant integration code for:
-   - API endpoint path references
-   - HTTP method calls
-   - Field name access (dict keys, attributes, assignments)
-   - Webhook event name references
-   - Removed enum value literals
-
-3. **Risk Scoring** — Deterministic severity (CRITICAL / HIGH / MEDIUM) based on change type.
-
-4. **Report Generation** — Export as JSON or Markdown with full finding details.
-
-### AI Enhancement (optional, requires `ANTHROPIC_API_KEY`)
-
-After deterministic analysis completes, Claude is sent focused context per finding:
-- The specific API change detected
-- The affected code snippet and file location
-- The old and new schema values
-- The calculated severity
-
-Claude returns structured JSON with:
-- Technical explanation
-- Business impact assessment
-- Suggested code fix
-- Confidence level
-
-**If the API key is missing or the call fails, the app continues normally with deterministic results.**
+1. Navigate to the **Agents** tab in the sidebar.
+2. Select an active agent (e.g., *IT Asset Auto-Provisioner*).
+3. Enter a prompt simulating an autonomous task (e.g., *"Procure 5 new Macbook Pros for the engineering team from Apple."*).
+4. Watch as the agent generates an Intent, hits the Policy Engine, and is either executed or quarantined for human review based on the $500 transaction limit policy.
 
 ---
 
-## Architecture
+## 🔮 Future Scalability & Production Considerations
 
-```
-payment_change_guardian/
-├── app.py                  # Streamlit dashboard
-├── diff_engine.py          # API spec comparison (deterministic)
-├── code_scanner.py         # Merchant code reference scanner
-├── risk_engine.py          # Severity scoring and report assembly
-├── ai_explainer.py         # Optional Claude AI integration
-├── report_generator.py     # JSON and Markdown export
-├── models.py               # Data models (dataclasses)
-├── requirements.txt        # Python dependencies
-├── .env.example            # Environment variable template
-├── fixtures/
-│   ├── old_api.json        # Razorpay API v1 spec
-│   ├── new_api.json        # Razorpay API v2 spec (breaking)
-│   └── merchant_project/
-│       ├── payment_client.py
-│       ├── webhook_handler.py
-│       └── order_service.py
-└── tests/
-    ├── test_diff_engine.py
-    ├── test_code_scanner.py
-    └── test_risk_engine.py
-```
+While this iteration serves as a robust proof-of-concept for Agentic Risk Management, scaling this to handle thousands of concurrent agents requires the following architectural evolutions:
+
+- **Distributed Ledger Integration:** Moving the local SQLite Evidence Ledger to a distributed, tamper-evident datastore (e.g., AWS QLDB or a permissioned blockchain) to guarantee cryptographic immutability across multi-tenant environments.
+- **Streaming Policy Evaluation:** Migrating `policy_engine.py` to a stream-processing framework (like Apache Flink) to evaluate temporal velocity policies across millions of events with sub-millisecond latency.
+- **Dynamic Policy Generation:** Utilizing a secondary, highly-constrained LLM (a "Policy Agent") to dynamically update deterministic risk thresholds based on macro-economic data and historical agent performance. 
 
 ---
-
-## Demo Breaking Changes
-
-The fixtures demonstrate these breaking changes:
-
-| # | Change | Type | Severity |
-|---|--------|------|----------|
-| 1 | `POST /v1/payments` now requires `customer_id` | Required field added | HIGH |
-| 2 | Response `status` changed from `string` to `object` | Type changed | HIGH |
-| 3 | Response `order_id` removed from payments | Field removed | HIGH |
-| 4 | `payment.failed` webhook payload fields removed | Webhook changed | HIGH |
-| 5 | `EUR`, `GBP` removed from currency enum; `wallet`, `emi` removed from method enum | Enum removed | MEDIUM |
-| 6 | `POST /v1/refunds` endpoint removed | Endpoint removed | CRITICAL |
-| 7 | Auth changed from Basic Auth to Bearer/OAuth2 | Auth changed | CRITICAL |
-
----
-
-## Current Limitations
-
-- **Text-based scanning only** — No AST parsing; relies on regex pattern matching. May produce false positives on common field names.
-- **Single provider** — Demo fixtures are Razorpay-style, but the engine accepts any OpenAPI-style JSON.
-- **No live API validation** — Works entirely with local spec files. No Razorpay API calls are made.
-- **No persistence** — Results are per-session. Export to JSON/Markdown for archival.
-- **AI context limit** — Sends at most 5 code references per finding to Claude to stay within token limits.
-
-## Adding Razorpay Live Integration (Future)
-
-1. Fetch the live Razorpay OpenAPI spec from their documentation portal.
-2. Store previous spec versions locally or in a database.
-3. Schedule periodic comparisons (e.g., daily cron).
-4. Use Razorpay's test-mode API keys to validate detected changes against the real API.
-5. Integrate with CI/CD to block deployments when critical breaking changes are detected.
-
----
-
-## License
-
-MIT
+*Built for the Razorpay AI Builder Internship 2026.*
