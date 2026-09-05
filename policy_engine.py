@@ -149,9 +149,9 @@ def evaluate(proposal: TransactionProposal) -> PolicyDecision:
                 checks.append(PolicyCheck("category_match", CheckResult.PASS,
                     f"Category '{proposal.category}' matches '{intent_category}'"))
             elif not prop_cat:
-                checks.append(PolicyCheck("category_match", CheckResult.WARN,
+                checks.append(PolicyCheck("category_match", CheckResult.FAIL,
                     f"No category specified in proposal; intent requires '{intent_category}'"))
-                has_warn = True
+                has_block = True
             else:
                 checks.append(PolicyCheck("category_match", CheckResult.FAIL,
                     f"Category '{proposal.category}' ≠ authorized '{intent_category}'"))
@@ -173,9 +173,9 @@ def evaluate(proposal: TransactionProposal) -> PolicyDecision:
                 checks.append(PolicyCheck("merchant_policy", CheckResult.PASS,
                     f"Merchant '{proposal.merchant_name}' is trusted"))
             elif not proposal.merchant_name:
-                checks.append(PolicyCheck("merchant_policy", CheckResult.WARN,
+                checks.append(PolicyCheck("merchant_policy", CheckResult.FAIL,
                     "No merchant specified; authorization requires trusted merchant"))
-                has_warn = True
+                has_block = True
             else:
                 checks.append(PolicyCheck("merchant_policy", CheckResult.FAIL,
                     f"Merchant '{proposal.merchant_name}' is not in trusted list"))

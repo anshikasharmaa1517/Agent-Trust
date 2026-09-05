@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def is_ai_available() -> bool:
-    """Check if Claude API is configured."""
-    return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    """Check if Groq API is configured."""
+    return bool(os.getenv("GROQ_API_KEY", "").strip())
 
 
 def explain_decision(decision_dict: dict, proposal: dict, intent: dict | None = None) -> dict:
@@ -36,8 +36,8 @@ def explain_decision(decision_dict: dict, proposal: dict, intent: dict | None = 
 
 
 def _explain_with_ai(decision_dict: dict, proposal: dict, intent: dict | None) -> dict:
-    """Use Claude to generate a human-readable explanation."""
-    import anthropic
+    """Use Groq to generate a human-readable explanation."""
+    import groq
 
     decision = decision_dict.get("decision", "UNKNOWN")
     checks = decision_dict.get("checks", {})
@@ -73,14 +73,13 @@ Respond with valid JSON only:
   "confidence": "high"
 }}"""
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=512,
+    client = groq.Groq()
+    chat_completion = client.chat.completions.create(
         messages=[{"role": "user", "content": prompt}],
+        model="llama3-8b-8192",
     )
 
-    response_text = message.content[0].text.strip()
+    response_text = chat_completion.choices[0].message.content.strip()
     if "```" in response_text:
         parts = response_text.split("```")
         json_part = parts[1] if len(parts) > 1 else parts[0]

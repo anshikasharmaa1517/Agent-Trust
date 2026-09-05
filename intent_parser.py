@@ -39,23 +39,24 @@ Return ONLY valid JSON in this exact format:
 
 
 def is_ai_available() -> bool:
-    """Check if Claude API is configured."""
-    return bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    """Check if Groq API is configured."""
+    return bool(os.getenv("GROQ_API_KEY", "").strip())
 
 
 def parse_intent_ai(raw_text: str) -> dict:
-    """Parse intent using Claude. Returns structured dict or raises on failure."""
-    import anthropic
+    """Parse intent using Groq. Returns structured dict or raises on failure."""
+    import groq
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=512,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": raw_text}],
+    client = groq.Groq()
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": raw_text}
+        ],
+        model="groq/compound",
     )
 
-    response_text = message.content[0].text.strip()
+    response_text = chat_completion.choices[0].message.content.strip()
 
     # Extract JSON from potential markdown code blocks
     if "```" in response_text:

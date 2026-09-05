@@ -16,6 +16,8 @@ import ai_explainer
 import evidence_service
 import razorpay_adapter
 import demo_data
+import crypto_utils
+import mock_agent
 
 load_dotenv()
 
@@ -34,6 +36,39 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────────
 db.init_db()
 demo_data.seed_demo_data()
+
+
+def navigate_to(page, **kwargs):
+    if "history" not in st.session_state:
+        st.session_state.history = [{"page": "overview"}]
+    
+    current_state = {"page": st.session_state.get("page", "overview")}
+    for k in ["detail_txn_id", "audit_txn_id", "agent_detail_id"]:
+        if k in st.session_state:
+            current_state[k] = st.session_state[k]
+            
+    st.session_state.history.append(current_state)
+    
+    st.session_state.page = page
+    for k, v in kwargs.items():
+        st.session_state[k] = v
+    st.rerun()
+
+def navigate_back():
+    if "history" in st.session_state and st.session_state.history:
+        prev_state = st.session_state.history.pop()
+        
+        st.session_state.page = prev_state.get("page", "overview")
+        
+        for k in ["detail_txn_id", "audit_txn_id", "agent_detail_id"]:
+            if k in prev_state:
+                st.session_state[k] = prev_state[k]
+            elif k in st.session_state:
+                st.session_state[k] = None
+        
+        st.rerun()
+    else:
+        navigate_to("overview")
 
 if "page" not in st.session_state:
     st.session_state.page = "overview"
@@ -163,13 +198,23 @@ div[data-testid="stAppViewBlockContainer"] { padding: 6rem 2rem 2rem 2rem !impor
 .rz-page-header {
     background: var(--rz-white);
     border-bottom: 1px solid var(--rz-border);
-    padding: 16px 24px;
+    padding: 16px 24px 16px 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin: 0 -2rem;
 }
 .rz-page-title { font-size: 20px; font-weight: 600; color: var(--rz-text); margin: 0; }
+
+[data-testid="stCollapsedControl"] {
+    position: fixed !important;
+    top: 290px !important;
+    left: 16px !important;
+    background-color: var(--rz-white) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    z-index: 999999 !important;
+}
 .rz-page-subtitle { font-size: 13px; color: var(--rz-text-secondary); margin-top: 2px; }
 .rz-page-actions { display: flex; gap: 8px; align-items: center; }
 
@@ -694,7 +739,7 @@ def render_sidebar():
             if current == key:
                 current_idx = i
 
-        selected = st.radio("", options=options, index=current_idx, label_visibility="collapsed")
+        selected = st.radio(" ", options=options, index=current_idx, label_visibility="collapsed")
         new_page = key_map[selected]
         
         if new_page != st.session_state.page:
@@ -702,8 +747,7 @@ def render_sidebar():
             if st.session_state.page == "txn_detail" and new_page == "transactions":
                 pass
             else:
-                st.session_state.page = new_page
-                st.rerun()
+                navigate_to(new_page)
 
 
 
@@ -716,9 +760,12 @@ def page_overview():
     txns = db.list_transactions()
     agents = db.list_agents()
 
-    # Page header removed since it's now in the top black banner
-
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="rz-page-header">
+      <div><div class="rz-page-title">Overview</div><div class="rz-page-subtitle">Platform dashboard and system metrics.</div></div>
+    </div>
+    <div class="rz-content" style="padding-top: 4px;">
+    """, unsafe_allow_html=True)
 
     # KPIs
     st.markdown(f"""
@@ -756,7 +803,7 @@ def page_overview():
     <div class="rz-table-wrap">
     <table class="rz-tbl">
       <thead><tr>
-        <th>Transaction</th><th>Agent</th><th>Intent</th>
+        <th>Transaction</th><th>Agent</th><th>Authorization</th>
         <th style="text-align:right">Amount</th><th>Decision</th><th>Time</th>
       </tr></thead>
       <tbody>{rows}</tbody>
@@ -808,8 +855,7 @@ def page_overview():
         st.markdown(f'<div class="rz-card" style="min-height: 160px;">{rows_html}</div>', unsafe_allow_html=True)
         if review_txns:
             if st.button("View all →", key="ov_review_all"):
-                st.session_state.page = "review"
-                st.rerun()
+                navigate_to("review")
 
     with col3:
         # Agent Activity summary (top 3 only)
@@ -823,8 +869,7 @@ def page_overview():
             
         st.markdown(f'<div class="rz-card" style="min-height: 160px;">{activity_html}</div>', unsafe_allow_html=True)
         if st.button("View all →", key="ov_agents_all"):
-            st.session_state.page = "agents"
-            st.rerun()
+            navigate_to("agents")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -839,14 +884,13 @@ def page_agents():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Agents</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
     detail_id = getattr(st.session_state, "agent_detail_id", None)
     if detail_id:
-        if st.button("← Back to Agents", key="agents_back_list"):
-            st.session_state.agent_detail_id = None
-            st.rerun()
+        if st.button("← Back", key="agents_back_list"):
+            navigate_back()
             
         a = db.get_agent(detail_id)
         if a:
@@ -872,12 +916,142 @@ def page_agents():
                 <div class="rz-detail-row"><span class="rz-detail-label">Permissions</span><span class="rz-detail-value">{', '.join(a.get('permissions', []))}</span></div>
                 </div>
                 """, unsafe_allow_html=True)
+
+            # === AGENT SIMULATOR ===
+            st.markdown('<div class="rz-section-title" style="margin-top:32px">Agent Studio Simulator</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown('<div style="font-size:13px;color:#5f6368;margin-bottom:12px">Test this agent by sending it an instruction. Watch how Agent Trust evaluates its actions before executing via Razorpay.</div>', unsafe_allow_html=True)
+                
+                user_prompt = st.text_input("What should the agent do?", placeholder="e.g., Buy me a work laptop under ₹70,000", key=f"sim_prompt_{a['agent_id']}")
+                
+                col_opt, col_btn = st.columns([2, 1])
+                with col_opt:
+                    behavior_opts = {
+                        "Good Agent": "Will propose an amount under the limit with correct context.",
+                        "Overspending Agent": "Will propose an amount 50% over the limit (Triggers BLOCK).",
+                        "Missing Context Agent": "Will forget to include the category or merchant (Triggers REVIEW)."
+                    }
+                    agent_behavior = st.selectbox("Simulate Agent Behavior", list(behavior_opts.keys()), help="Select how the simulated agent should behave to test different policy outcomes.", key=f"sim_behavior_{a['agent_id']}")
+                with col_btn:
+                    st.markdown("<div style='padding-top: 28px'></div>", unsafe_allow_html=True)
+                    simulate = st.button("Send to Agent", type="primary", use_container_width=True, key=f"sim_btn_{a['agent_id']}")
+
+                if simulate:
+                    with st.spinner("Agent is processing..."):
+                        active_prompt = user_prompt.strip() if user_prompt.strip() else "Buy me a work laptop under ₹70,000"
+                        parsed, _ = intent_parser.parse_intent(active_prompt)
+                        
+                        # Create Intent (Authorization)
+                        intent_id = f"intent_{uuid.uuid4().hex[:6]}"
+                        now = datetime.now(timezone.utc)
+                        intent_dict = {
+                            "intent_id": intent_id,
+                            "user_id": "user_001",
+                            "raw_text": active_prompt,
+                            "purpose": parsed.get("purpose"),
+                            "category": parsed.get("category"),
+                            "max_amount": parsed.get("max_amount"),
+                            "currency": parsed.get("currency", "INR"),
+                            "merchant_requirement": parsed.get("merchant_requirement"),
+                            "status": IntentStatus.ACTIVE.value,
+                            "expires_at": (now + timedelta(hours=24)).isoformat(),
+                            "created_at": now.isoformat(),
+                            "parsed_json": json.dumps(parsed),
+                        }
+                        db.save_intent(intent_dict)
+                        
+                        # Generate AP2-style Intent Mandate (JWT)
+                        intent_jwt = crypto_utils.generate_intent_token(intent_dict)
+                        
+                        # Build Transaction Proposal based on behavior
+                        base_amount = parsed.get("max_amount") or 50000
+                        
+                        # Use the LLM-powered Mock Agent, passing the JWT
+                        proposal = mock_agent.generate_proposal(
+                            prompt=active_prompt, 
+                            persona=agent_behavior, 
+                            intent_jwt=intent_jwt,
+                            default_base_amount=base_amount
+                        )
+                        
+                        prop_amt = proposal.get("amount")
+                        prop_cat = proposal.get("category")
+                        prop_merch = proposal.get("merchant_name")
+                        returned_jwt = proposal.get("intent_jwt")
+                            
+                        result = transaction_service.create_full_flow(
+                            agent_id=a['agent_id'],
+                            intent_id=intent_id,
+                            amount=prop_amt,
+                            intent_jwt=returned_jwt,
+                            category=prop_cat,
+                            merchant_id="merchant_sim",
+                            merchant_name=prop_merch,
+                            description=f"Simulated action for: {active_prompt[:30]}"
+                        )
+                        st.session_state[f"sim_result_{a['agent_id']}"] = result
+                        
+                sim_res = st.session_state.get(f"sim_result_{a['agent_id']}")
+                if sim_res:
+                    st.markdown("<hr style='margin: 24px 0; border-color: #e5e7eb'>", unsafe_allow_html=True)
+                    r1, r2, r3 = st.columns([1.2, 1.5, 1])
+                    
+                    dec = db.get_policy_decision(sim_res["transaction_id"])
+                    prop = db.get_transaction(sim_res["transaction_id"])
+                    
+                    with r1:
+                        st.markdown('<div class="rz-card-header">Agent Proposal</div>', unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style="font-size:13px">
+                        <b>Amount:</b> {_amt(prop['amount'])}<br>
+                        <b>Category:</b> {prop.get('category') or '<span class="muted">None</span>'}<br>
+                        <b>Merchant:</b> {prop.get('merchant_name') or '<span class="muted">None</span>'}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with r2:
+                        st.markdown('<div class="rz-card-header">Policy Evaluation</div>', unsafe_allow_html=True)
+                        raw_checks = dec.get("checks", {})
+                        if isinstance(raw_checks, str):
+                            try:
+                                checks = json.loads(raw_checks)
+                            except:
+                                checks = {}
+                        elif isinstance(raw_checks, dict):
+                            checks = raw_checks
+                        else:
+                            checks = {}
+                        
+                        checks_html = ""
+                        for name, res in checks.items():
+                            icon = "✅" if res == "PASS" else ("❌" if res == "FAIL" else "⚠️")
+                            color = "#137333" if res == "PASS" else ("#c5221f" if res == "FAIL" else "#b06000")
+                            checks_html += f'<div style="font-size:12px; margin-bottom:4px"><span style="color:{color}">{icon}</span> {name}</div>'
+                        st.markdown(checks_html, unsafe_allow_html=True)
+                        
+                    with r3:
+                        st.markdown('<div class="rz-card-header">Decision</div>', unsafe_allow_html=True)
+                        st.markdown(f"<div style='margin-bottom:12px'>{_badge(dec['decision'])}</div>", unsafe_allow_html=True)
+                        
+                        if dec["decision"] == "ALLOW":
+                            st.success("✓ Executed via Razorpay")
+                        elif dec["decision"] == "REVIEW":
+                            st.warning("⚠️ Wallet Signature Required")
+                            st.markdown("<div style='font-size:11px; margin-bottom:8px'>This transaction exceeded limits. AP2 requires cryptographic human approval.</div>", unsafe_allow_html=True)
+                            if st.button("Sign & Approve via Wallet", key=f"wallet_approve_{sim_res['transaction_id']}", type="primary"):
+                                db.update_transaction_status(sim_res['transaction_id'], "approved_by_wallet")
+                                db.save_policy_decision(sim_res['transaction_id'], {**dec, "decision": "ALLOW", "reason_code": "WALLET_OVERRIDE", "reason_detail": "Human cryptographically signed the mandate."})
+                                # Force execution with the new ALLOW decision
+                                transaction_service.execute_transaction(sim_res['transaction_id'])
+                                st.rerun()
+                        else:
+                            st.error("❌ Transaction Blocked")
+                            
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
     if st.button("← Overview", key="agents_back_ov"):
-        st.session_state.page = "overview"
-        st.rerun()
+        navigate_to("overview")
 
     # Filters
     fc1, fc2, _, _ = st.columns([2, 1, 1, 2])
@@ -903,7 +1077,7 @@ def page_agents():
     paged_agents = agents[current_pg * page_size : (current_pg + 1) * page_size]
 
     # Agent table using columns so Agent names are clickable buttons
-    h1, h2, h3, h4, h5, h6 = st.columns([2.0, 1.2, 1.2, 1.4, 1.4, 1.2])
+    h1, h2, h3, h4, h5, h6, h7 = st.columns([1.8, 1.2, 1.2, 1.4, 1.2, 1.2, 1.0])
     with h1:
         st.markdown('<div style="font-size:11px;font-weight:600;color:#5f6368;text-transform:uppercase;padding:4px 0">Agent</div>', unsafe_allow_html=True)
     with h2:
@@ -916,6 +1090,8 @@ def page_agents():
         st.markdown('<div style="font-size:11px;font-weight:600;color:#5f6368;text-transform:uppercase;padding:4px 0;text-align:right">Limit</div>', unsafe_allow_html=True)
     with h6:
         st.markdown('<div style="font-size:11px;font-weight:600;color:#5f6368;text-transform:uppercase;padding:4px 0">Last Activity</div>', unsafe_allow_html=True)
+    with h7:
+        st.markdown('<div style="font-size:11px;font-weight:600;color:#5f6368;text-transform:uppercase;padding:4px 0;text-align:center">Action</div>', unsafe_allow_html=True)
 
     st.markdown('<div style="border-bottom:1px solid #e5e7eb;margin-bottom:8px"></div>', unsafe_allow_html=True)
 
@@ -923,7 +1099,7 @@ def page_agents():
         st.markdown('<div style="font-size:13px;color:#9ca3af;padding:20px;text-align:center">No agents match filters.</div>', unsafe_allow_html=True)
 
     for a in paged_agents:
-        c1, c2, c3, c4, c5, c6 = st.columns([2.0, 1.2, 1.2, 1.4, 1.4, 1.2])
+        c1, c2, c3, c4, c5, c6, c7 = st.columns([1.8, 1.2, 1.2, 1.4, 1.2, 1.2, 1.0])
         with c1:
             if st.button(a['name'], key=f"agent_name_btn_{a['agent_id']}", use_container_width=True):
                 st.session_state.agent_detail_id = a["agent_id"]
@@ -938,6 +1114,10 @@ def page_agents():
             st.markdown(f'<div style="padding-top:6px;text-align:right;font-size:13px;color:#111827">{_amt(a["spending_limit"]) if a.get("spending_limit") else "—"}</div>', unsafe_allow_html=True)
         with c6:
             st.markdown(f'<div style="padding-top:6px;color:#9ca3af;font-size:12px">{_ago(a["created_at"])}</div>', unsafe_allow_html=True)
+        with c7:
+            if st.button("Test Agent", key=f"agent_test_{a['agent_id']}", use_container_width=True):
+                st.session_state.agent_detail_id = a["agent_id"]
+                st.rerun()
 
         st.markdown('<div style="border-bottom:1px solid #f3f4f6;margin:4px 0 8px"></div>', unsafe_allow_html=True)
 
@@ -966,8 +1146,8 @@ def page_intents():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Authorizations</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
     # Create Authorization
     st.markdown('<div class="rz-section-title">Create Authorization</div>', unsafe_allow_html=True)
@@ -978,7 +1158,7 @@ def page_intents():
 
         c1, c2 = st.columns([1, 2])
         with c1:
-            if st.button("Create Authorization", key="parse_btn", use_container_width=True, disabled=not raw_text):
+            if st.button("Create Authorization", key="parse_btn", type="primary", use_container_width=True, disabled=not raw_text):
                 if raw_text.strip():
                     with st.spinner("Parsing…"):
                         parsed, used_ai = intent_parser.parse_intent(raw_text.strip())
@@ -1005,7 +1185,7 @@ def page_intents():
                     st.rerun()
 
         with c2:
-            parser_label = "✦ Claude AI" if intent_parser.is_ai_available() else "⚡ Regex parser"
+            parser_label = "✦ Llama 3 (Groq)" if intent_parser.is_ai_available() else "⚡ Regex parser"
             st.markdown(f'<div style="padding-top:8px;font-size:11px;color:#9ca3af">{parser_label}</div>', unsafe_allow_html=True)
 
     # Last parsed result — Authorization Preview
@@ -1023,7 +1203,7 @@ def page_intents():
               <div style="font-size:13px;color:#1a1a1a;padding:10px;background:#f8f9fa;border-radius:4px;border:1px solid #e5e7eb;font-style:italic">"{intent['raw_text']}"</div>
               <div style="margin-top:8px;font-size:11px;color:#9ca3af">
                 ID: <span style="color:var(--rz-blue)">{intent['intent_id']}</span> ·
-                Parser: <span class="rz-badge {'rz-badge-info' if used_ai else 'rz-badge-inactive'}">{'Claude AI' if used_ai else 'Regex'}</span>
+                Parser: <span class="rz-badge {'rz-badge-info' if used_ai else 'rz-badge-inactive'}">{'Llama 3 (Groq)' if used_ai else 'Regex'}</span>
               </div>
             </div>
             """, unsafe_allow_html=True)
@@ -1072,42 +1252,12 @@ def page_transactions():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Transactions</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
     if st.button("← Overview", key="txns_back_ov"):
-        st.session_state.page = "overview"
-        st.rerun()
-    with st.expander("+ Create Transaction", expanded=False):
-        tc1, tc2 = st.columns(2)
-        with tc1:
-            agents_list = db.list_agents()
-            agent_opts = {a["name"]: a["agent_id"] for a in agents_list}
-            agent_name = st.selectbox("Agent", list(agent_opts.keys()), key="txn_agent")
-            intents_list = db.list_intents()
-            active_intents = [i for i in intents_list if i["status"] == "active"]
-            intent_opts = {f"{i['intent_id']}: {i['raw_text'][:40]}": i["intent_id"] for i in active_intents}
-            intent_sel = st.selectbox("Authorization", list(intent_opts.keys()), key="txn_intent") if intent_opts else None
-        with tc2:
-            amount = st.number_input("Amount (₹)", min_value=1.0, value=6999.0, key="txn_amount")
-            category = st.text_input("Category", value="", key="txn_category")
-            merchant = st.text_input("Merchant", value="", key="txn_merchant")
-            description = st.text_input("Description", value="", key="txn_desc")
+        navigate_to("overview")
 
-        if st.button("Submit Transaction", key="txn_submit", disabled=not intent_sel):
-            if intent_sel:
-                result = transaction_service.create_full_flow(
-                    agent_id=agent_opts[agent_name],
-                    intent_id=intent_opts[intent_sel],
-                    amount=amount,
-                    category=category or None,
-                    merchant_id="merchant_custom",
-                    merchant_name=merchant or None,
-                    description=description or None,
-                )
-                st.session_state.page = "txn_detail"
-                st.session_state.detail_txn_id = result["transaction_id"]
-                st.rerun()
 
     # Filters
     fc1, fc2, fc3, fc4 = st.columns([2, 1, 1, 1])
@@ -1122,7 +1272,7 @@ def page_transactions():
     # Transaction table
     all_txns = db.list_transactions()
     if not all_txns:
-        st.info("No transactions yet. Create one above.")
+        st.info("No transactions yet. Use the Agent Simulator on the Agents page to generate traffic.")
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
@@ -1236,12 +1386,11 @@ def page_review():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Pending Review</div><div class="rz-page-subtitle">Transactions requiring human approval.</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
     if st.button("← Overview", key="review_back_ov"):
-        st.session_state.page = "overview"
-        st.rerun()
+        navigate_to("overview")
 
     txns = db.list_transactions()
     review_txns = []
@@ -1311,8 +1460,7 @@ def page_review():
 def page_txn_detail():
     txn_id = getattr(st.session_state, "detail_txn_id", None)
     if not txn_id:
-        st.session_state.page = "transactions"
-        st.rerun()
+        navigate_to("transactions")
         return
 
     txn = db.get_transaction(txn_id)
@@ -1337,12 +1485,11 @@ def page_txn_detail():
       </div>
       <div class="rz-page-actions">{_badge(decision_val)}</div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
-    if st.button("← Back to Transactions", key="back_txns"):
-        st.session_state.page = "transactions"
-        st.rerun()
+    if st.button("← Back", key="back_txns"):
+        navigate_back()
 
     # ── Trust Chain ──
     st.markdown('<div class="rz-section-title">Trust Chain</div>', unsafe_allow_html=True)
@@ -1437,7 +1584,7 @@ def page_txn_detail():
         st.markdown(f"""
         <div class="rz-ai-panel">
           <div style="font-size:11px;font-weight:600;color:var(--rz-blue);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">
-            {'✦ Claude AI Explanation' if intent_parser.is_ai_available() else '⚡ Deterministic Explanation'}
+            {'✦ Llama 3 (Groq) Explanation' if intent_parser.is_ai_available() else '⚡ Deterministic Explanation'}
           </div>
           <div style="font-size:13px;color:#1a1a1a;margin-bottom:6px"><strong>{explanation.get('summary','')}</strong></div>
           <div style="font-size:13px;color:#374151;margin-bottom:8px">{explanation.get('detail','')}</div>
@@ -1451,27 +1598,26 @@ def page_txn_detail():
     # Manual Override (if REVIEW)
     if decision_val == "REVIEW":
         st.markdown('<div class="rz-section-title" style="margin-top:16px">Manual Override</div>', unsafe_allow_html=True)
-        st.markdown('<div class="rz-card">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([1, 1, 2])
-        with c1:
-            if st.button("✓ Approve & Execute", key=f"appr_{txn_id}", type="primary", use_container_width=True):
-                res = transaction_service.approve_transaction(txn_id)
-                if res.get("error"):
-                    st.error(res["error"])
-                else:
-                    st.success("Transaction Approved and Executed!")
-                st.rerun()
-        with c2:
-            if st.button("✗ Reject & Block", key=f"rej_{txn_id}", use_container_width=True):
-                res = transaction_service.reject_transaction(txn_id)
-                if res.get("error"):
-                    st.error(res["error"])
-                else:
-                    st.success("Transaction Rejected.")
-                st.rerun()
-        with c3:
-            st.markdown('<div style="font-size:12px;color:#6b7280;padding-top:8px">This will override the policy engine and cryptographically sign the new decision.</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            c1, c2, c3 = st.columns([1, 1, 2])
+            with c1:
+                if st.button("✓ Approve & Execute", key=f"appr_{txn_id}", type="primary", use_container_width=True):
+                    res = transaction_service.approve_transaction(txn_id)
+                    if res.get("error"):
+                        st.error(res["error"])
+                    else:
+                        st.success("Transaction Approved and Executed!")
+                    st.rerun()
+            with c2:
+                if st.button("✗ Reject & Block", key=f"rej_{txn_id}", use_container_width=True):
+                    res = transaction_service.reject_transaction(txn_id)
+                    if res.get("error"):
+                        st.error(res["error"])
+                    else:
+                        st.success("Transaction Rejected.")
+                    st.rerun()
+            with c3:
+                st.markdown('<div style="font-size:12px;color:#6b7280;display:flex;align-items:center;height:38px;">This will override the policy engine and cryptographically sign the new decision.</div>', unsafe_allow_html=True)
 
     # View full evidence link
     if evidence:
@@ -1491,22 +1637,27 @@ def page_audit():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Audit & Evidence</div><div class="rz-page-subtitle">Cryptographic evidence chain for all transactions.</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
-    if st.button("← Overview", key="audit_back_ov"):
-        st.session_state.page = "overview"
-        st.rerun()
 
     target_txn = getattr(st.session_state, "audit_txn_id", None)
 
     evidences = db.list_audit_evidence()
     if not evidences:
-        st.info("No audit evidence available yet. Run a transaction first.")
+        st.markdown("""
+        <div style="text-align:center;padding:48px 24px;border:1px dashed #d1d5db;border-radius:8px;background:#f9fafb;margin-top:16px;">
+            <div style="font-size:24px;color:#9ca3af;margin-bottom:8px">🔒</div>
+            <div style="font-size:14px;font-weight:600;color:#374151">No Evidence Records</div>
+            <div style="font-size:13px;color:#6b7280;margin-top:4px">A cryptographic chain of custody will appear here once an agent initiates a transaction.</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
     # Evidence list
+    agent_map = {a["agent_id"]: a["name"] for a in db.list_agents()}
+
     if not target_txn:
         rows = ""
         for ev in evidences:
@@ -1514,31 +1665,26 @@ def page_audit():
             decision_val = dec_data.get("decision", "?")
             badge = _badge(decision_val)
             verified_icon = '<span style="color:#1e8e3e">✓</span>' if ev.get("verified") else '<span style="color:#9ca3af">—</span>'
+            agent_disp = agent_map.get(ev.get('agent_id'), ev.get('agent_id', '—'))
             rows += f"""
             <tr>
               <td class="muted nowrap">{ev['created_at'][:19]}</td>
-              <td class="mono nowrap">{_sid(ev['transaction_id'])}</td>
+              <td class="mono nowrap"><a href="/?audit={ev['transaction_id']}" target="_self" style="color:var(--rz-blue);text-decoration:none;">{_sid(ev['transaction_id'])}</a></td>
               <td>{ev.get('outcome','—')}</td>
               <td>{badge}</td>
-              <td>{ev.get('agent_id','—')}</td>
+              <td style="font-weight:500;">{agent_disp}</td>
               <td>{verified_icon}</td>
             </tr>"""
 
         st.markdown(f"""
         <div class="rz-table-wrap">
         <table class="rz-tbl">
-          <thead><tr><th>Timestamp</th><th>Transaction</th><th>Event</th><th>Decision</th><th>Actor</th><th>Integrity</th></tr></thead>
+          <thead><tr><th>Timestamp</th><th>Transaction</th><th>Event</th><th>Decision</th><th>Agent</th><th>Integrity</th></tr></thead>
           <tbody>{rows}</tbody>
         </table>
         </div>
         """, unsafe_allow_html=True)
 
-        cols = st.columns(min(len(evidences), 4))
-        for i, ev in enumerate(evidences[:4]):
-            with cols[i]:
-                if st.button(f"View {_sid(ev['transaction_id'])}", key=f"aud_view_{i}"):
-                    st.session_state.audit_txn_id = ev["transaction_id"]
-                    st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
@@ -1549,20 +1695,31 @@ def page_audit():
         st.markdown('</div>', unsafe_allow_html=True)
         return
 
-    if st.button("← Back to Evidence List", key="back_aud"):
-        st.session_state.audit_txn_id = None
-        st.rerun()
+    if st.button("← Back", key="back_aud"):
+        navigate_back()
 
     dec_data = json.loads(ev.get("policy_decision", "{}"))
     decision_val = dec_data.get("decision", "?")
 
+    def _pretty_json(s):
+        if not s or s == "—": return "—"
+        try:
+            pretty = json.dumps(json.loads(s), indent=2)
+            return pretty.replace('\\n', '<br>').replace('  ', '&nbsp;&nbsp;')
+        except Exception:
+            return s
+
+    auth_json = _pretty_json(ev.get("structured_authorization"))
+    prop_json = _pretty_json(ev.get("agent_proposal"))
+
     # Authorization Chain
     st.markdown('<div class="rz-section-title">Authorization Chain</div>', unsafe_allow_html=True)
+    agent_disp_detail = agent_map.get(ev.get("agent_id"), ev.get("agent_id", "—"))
     chain_steps = [
         ("blue", "User Intent", f'"{ev.get("raw_intent", "—")}"'),
-        ("blue", "Structured Authorization", f'<div class="rz-code" style="margin:4px 0;font-size:11px">{ev.get("structured_authorization","—")}</div>'),
-        ("blue", "Agent", ev.get("agent_id", "—")),
-        ("blue", "Transaction Proposal", f'<div class="rz-code" style="margin:4px 0;font-size:11px">{ev.get("agent_proposal","—")[:200]}</div>'),
+        ("blue", "Structured Authorization", f'<div class="rz-code" style="margin:4px 0;font-size:11px;background:#f9fafb;padding:8px;border-radius:4px;">{auth_json}</div>'),
+        ("blue", "Agent", f"<strong>{agent_disp_detail}</strong>"),
+        ("blue", "Transaction Proposal", f'<div class="rz-code" style="margin:4px 0;font-size:11px;background:#f9fafb;padding:8px;border-radius:4px;">{prop_json}</div>'),
         ("green" if decision_val == "ALLOW" else ("red" if decision_val == "BLOCK" else "yellow"),
          "Policy Decision", _badge(decision_val)),
     ]
@@ -1614,8 +1771,8 @@ def page_settings():
     <div class="rz-page-header">
       <div><div class="rz-page-title">Account & Settings</div></div>
     </div>
+    <div class="rz-content" style="padding-top: 4px;">
     """, unsafe_allow_html=True)
-    st.markdown('<div class="rz-content">', unsafe_allow_html=True)
 
     ai_ok = intent_parser.is_ai_available()
 
@@ -1623,7 +1780,7 @@ def page_settings():
     st.markdown('<div class="rz-section-title">Integrations</div>', unsafe_allow_html=True)
     integrations = [
         ("Razorpay API", rz_status['detail'], rz_connected, "Connected" if rz_connected else "Simulated"),
-        ("Claude AI", "Intent parsing + explanations" if ai_ok else "Deterministic fallback active", ai_ok, "Active" if ai_ok else "Optional"),
+        ("Llama 3 (Groq)", "Intent parsing + explanations" if ai_ok else "Deterministic fallback active", ai_ok, "Active" if ai_ok else "Optional"),
         ("Policy Engine", "10 deterministic checks", True, "Active"),
         ("Evidence Chain", "SHA-256 hashing · Integrity verification", True, "Active"),
     ]
@@ -1674,6 +1831,11 @@ def page_settings():
 if "txn" in st.query_params:
     st.session_state.page = "txn_detail"
     st.session_state.detail_txn_id = st.query_params["txn"]
+    st.query_params.clear()
+
+if "audit" in st.query_params:
+    st.session_state.page = "audit"
+    st.session_state.audit_txn_id = st.query_params["audit"]
     st.query_params.clear()
 
 render_sidebar()

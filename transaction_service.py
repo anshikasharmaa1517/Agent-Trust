@@ -140,11 +140,13 @@ def execute_transaction(transaction_id: str) -> dict:
         "is_simulated": rz_result.get("is_simulated", True),
     }
 
+import crypto_utils
 
 def create_full_flow(
     agent_id: str,
     intent_id: str,
     amount: float,
+    intent_jwt: str = None,
     currency: str = "INR",
     category: str | None = None,
     merchant_id: str | None = None,
@@ -156,6 +158,19 @@ def create_full_flow(
     Returns a summary dict with all stages.
     """
     txn_id = f"agt_tx_{uuid.uuid4().hex[:8]}"
+
+    # AP2-style cryptographic verification
+    if intent_jwt:
+        decoded_intent = crypto_utils.verify_intent_token(intent_jwt)
+        if not decoded_intent:
+            return {
+                "transaction_id": txn_id,
+                "decision": Decision.BLOCK.value,
+                "reason_code": "INVALID_JWT",
+                "reason_detail": "The cryptographic intent signature is missing or invalid.",
+                "executed": False,
+            }
+        # In a real system, we'd verify that decoded_intent matches intent_id in DB here.
 
     proposal = TransactionProposal(
         transaction_id=txn_id,

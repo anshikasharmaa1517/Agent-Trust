@@ -33,7 +33,7 @@ def seed_demo_data():
     agents = [
         {
             "agent_id": "agent_001",
-            "name": "Shopping Agent",
+            "name": "IT Asset Auto-Provisioner",
             "owner_id": "user_001",
             "status": AgentStatus.ACTIVE.value,
             "permissions": ["create_order"],
@@ -44,7 +44,7 @@ def seed_demo_data():
         },
         {
             "agent_id": "agent_002",
-            "name": "Procurement Agent",
+            "name": "DevOps Cloud Auto-Scaler",
             "owner_id": "user_001",
             "status": AgentStatus.ACTIVE.value,
             "permissions": ["create_order"],
@@ -55,7 +55,7 @@ def seed_demo_data():
         },
         {
             "agent_id": "agent_003",
-            "name": "Travel Agent",
+            "name": "Sales Travel Copilot",
             "owner_id": "user_002",
             "status": AgentStatus.INACTIVE.value,
             "permissions": ["create_order"],

@@ -234,7 +234,7 @@ def list_transactions() -> list[dict]:
 def save_policy_decision(transaction_id: str, decision_dict: dict):
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO policy_decisions
+            INSERT OR REPLACE INTO policy_decisions
             (transaction_id, decision, checks_json, reason_code, reason_detail, evaluated_at)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
